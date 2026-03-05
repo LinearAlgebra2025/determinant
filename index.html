@@ -50,11 +50,19 @@ input{
 
 button{
     padding:6px 10px;
-    margin-left:6px;
+    margin-right:6px;
 }
+
 .selected{
     font-weight:bold;
     color:blue;
+}
+
+.valueBox{
+    margin-top:8px;
+    padding:8px;
+    background:#f9f9f9;
+    border:1px solid #ddd;
 }
 </style>
 </head>
@@ -86,8 +94,12 @@ v₂ = (
 )
 </div>
 
-<div class="row" id="detDisplay"></div>
-<div class="row" id="relationDisplay"></div>
+<div class="valueBox">
+<div id="detValue"></div>
+<div id="absDetValue"></div>
+<div id="areaValue"></div>
+<div id="relation"></div>
+</div>
 
 <button onclick="resetVectors()">重置</button>
 
@@ -178,14 +190,22 @@ function updatePanel(){
     document.getElementById("v2y").value=v2.y.toFixed(2);
 
     const det=v1.x*v2.y-v1.y*v2.x;
-    document.getElementById("detDisplay").innerHTML=
-    "det(A) = "+det.toFixed(2);
+    const area=Math.abs(det);
+
+    document.getElementById("detValue").innerHTML=
+        "行列式 det(A) = "+det.toFixed(4);
+
+    document.getElementById("absDetValue").innerHTML=
+        "|det(A)| = "+area.toFixed(4);
+
+    document.getElementById("areaValue").innerHTML=
+        "平行四边形面积 = "+area.toFixed(4);
 
     if(Math.abs(det)<0.0001){
-        document.getElementById("relationDisplay").innerHTML=
-        "<span style='color:red'>向量线性相关（行列式为0）</span>";
+        document.getElementById("relation").innerHTML=
+        "<span style='color:red'>向量线性相关（面积为0）</span>";
     }else{
-        document.getElementById("relationDisplay").innerHTML=
+        document.getElementById("relation").innerHTML=
         "|det(A)| = 面积 ✔";
     }
 }
@@ -236,7 +256,6 @@ function startDrag(e){
     if(dist(pos,toCanvas(v1))<15) dragging="v1";
     else if(dist(pos,toCanvas(v2))<15) dragging="v2";
     else{
-        // 点击空白处设置当前向量
         const v=fromCanvas(pos);
         if(selected==="v1"){v1=v;}
         else{v2=v;}
@@ -258,7 +277,6 @@ function dist(a,b){
     return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2);
 }
 
-// 输入框监听
 document.querySelectorAll("input").forEach(input=>{
     input.addEventListener("change",()=>{
         v1.x=parseFloat(document.getElementById("v1x").value);
