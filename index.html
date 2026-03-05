@@ -15,7 +15,7 @@
 <style>
 body{
     margin:0;
-    font-family: Arial, sans-serif;
+    font-family:Arial, sans-serif;
     display:flex;
     flex-direction:column;
 }
@@ -24,31 +24,37 @@ body{
     width:100%;
     height:60vh;
     background:#f0f0f0;
-    display:flex;
-    justify-content:center;
-    align-items:center;
 }
 
 canvas{
     background:white;
     touch-action:none;
+    display:block;
 }
 
-#info{
-    padding:15px;
+#panel{
+    padding:12px;
+    font-size:16px;
     background:white;
     border-top:1px solid #ddd;
-    font-size:16px;
 }
 
-.value{
+.row{
     margin:6px 0;
 }
 
-button{
-    padding:8px 12px;
-    margin-top:10px;
+input{
+    width:60px;
     font-size:16px;
+}
+
+button{
+    padding:6px 10px;
+    margin-left:6px;
+}
+.selected{
+    font-weight:bold;
+    color:blue;
 }
 </style>
 </head>
@@ -58,90 +64,67 @@ button{
 <canvas id="canvas"></canvas>
 </div>
 
-<div id="info">
-<div class="value" id="matrixDisplay"></div>
-<div class="value" id="detDisplay"></div>
-<div class="value" id="areaDisplay"></div>
-<div class="value" id="relationDisplay"></div>
+<div id="panel">
+
+<div class="row">
+当前编辑：
+<button onclick="selectVector('v1')" id="btn1">v₁</button>
+<button onclick="selectVector('v2')" id="btn2">v₂</button>
+</div>
+
+<div class="row">
+v₁ = (
+<input id="v1x" type="number" step="0.1"> ,
+<input id="v1y" type="number" step="0.1">
+)
+</div>
+
+<div class="row">
+v₂ = (
+<input id="v2x" type="number" step="0.1"> ,
+<input id="v2y" type="number" step="0.1">
+)
+</div>
+
+<div class="row" id="detDisplay"></div>
+<div class="row" id="relationDisplay"></div>
+
 <button onclick="resetVectors()">重置</button>
+
 </div>
 
 <script>
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
 
-function resizeCanvas(){
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight * 0.6;
-    origin = {x:canvas.width/2, y:canvas.height/2};
-    scale = Math.min(canvas.width,canvas.height)/6;
+let origin, scale;
+let v1={x:1,y:0};
+let v2={x:0,y:1};
+let selected="v1";
+let dragging=null;
+
+function resize(){
+    canvas.width=window.innerWidth;
+    canvas.height=window.innerHeight*0.6;
+    origin={x:canvas.width/2,y:canvas.height/2};
+    scale=Math.min(canvas.width,canvas.height)/6;
     draw();
 }
-window.addEventListener("resize",resizeCanvas);
-
-let origin = {x:0,y:0};
-let scale = 60;
-
-let v1 = {x:1,y:0};
-let v2 = {x:0,y:1};
-
-let dragging = null;
-
-function getPosition(e){
-    const rect = canvas.getBoundingClientRect();
-    if(e.touches){
-        return {
-            x: e.touches[0].clientX - rect.left,
-            y: e.touches[0].clientY - rect.top
-        };
-    }else{
-        return {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
-        };
-    }
-}
-
-function dist(a,b){
-    return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2);
-}
+window.addEventListener("resize",resize);
 
 function toCanvas(v){
     return {
-        x: origin.x + v.x*scale,
-        y: origin.y - v.y*scale
+        x:origin.x+v.x*scale,
+        y:origin.y-v.y*scale
     };
 }
 
-function startDrag(e){
-    const pos = getPosition(e);
-    if(dist(pos,toCanvas(v1))<20) dragging="v1";
-    else if(dist(pos,toCanvas(v2))<20) dragging="v2";
+function fromCanvas(p){
+    return {
+        x:(p.x-origin.x)/scale,
+        y:(origin.y-p.y)/scale
+    };
 }
-
-function moveDrag(e){
-    if(!dragging) return;
-    e.preventDefault();
-    const pos = getPosition(e);
-    const vx = (pos.x-origin.x)/scale;
-    const vy = (origin.y-pos.y)/scale;
-    if(dragging==="v1"){ v1.x=vx; v1.y=vy; }
-    if(dragging==="v2"){ v2.x=vx; v2.y=vy; }
-    draw();
-}
-
-function endDrag(){
-    dragging=null;
-}
-
-canvas.addEventListener("mousedown",startDrag);
-canvas.addEventListener("mousemove",moveDrag);
-canvas.addEventListener("mouseup",endDrag);
-canvas.addEventListener("mouseleave",endDrag);
-
-canvas.addEventListener("touchstart",startDrag);
-canvas.addEventListener("touchmove",moveDrag);
-canvas.addEventListener("touchend",endDrag);
 
 function drawAxes(){
     ctx.strokeStyle="#ccc";
@@ -155,7 +138,7 @@ function drawAxes(){
 }
 
 function drawVector(v,color){
-    const end = toCanvas(v);
+    const end=toCanvas(v);
     ctx.strokeStyle=color;
     ctx.fillStyle=color;
     ctx.lineWidth=3;
@@ -170,11 +153,10 @@ function drawVector(v,color){
 }
 
 function drawParallelogram(){
-    const p1 = toCanvas(v1);
-    const p2 = toCanvas(v2);
-    const p3 = toCanvas({x:v1.x+v2.x, y:v1.y+v2.y});
-
-    const det = v1.x*v2.y - v1.y*v2.x;
+    const p1=toCanvas(v1);
+    const p2=toCanvas(v2);
+    const p3=toCanvas({x:v1.x+v2.x,y:v1.y+v2.y});
+    const det=v1.x*v2.y-v1.y*v2.x;
 
     if(det>0) ctx.fillStyle="rgba(0,200,0,0.3)";
     else if(det<0) ctx.fillStyle="rgba(200,0,0,0.3)";
@@ -189,26 +171,22 @@ function drawParallelogram(){
     ctx.fill();
 }
 
-function updateInfo(){
-    const det = v1.x*v2.y - v1.y*v2.x;
-    const area = Math.abs(det);
+function updatePanel(){
+    document.getElementById("v1x").value=v1.x.toFixed(2);
+    document.getElementById("v1y").value=v1.y.toFixed(2);
+    document.getElementById("v2x").value=v2.x.toFixed(2);
+    document.getElementById("v2y").value=v2.y.toFixed(2);
 
-    document.getElementById("matrixDisplay").innerHTML =
-    `A = [ ${v1.x.toFixed(2)} ${v2.x.toFixed(2)} ; 
-           ${v1.y.toFixed(2)} ${v2.y.toFixed(2)} ]`;
-
-    document.getElementById("detDisplay").innerHTML =
-    `det(A) = ${det.toFixed(2)}`;
-
-    document.getElementById("areaDisplay").innerHTML =
-    `面积 = ${area.toFixed(2)}`;
+    const det=v1.x*v2.y-v1.y*v2.x;
+    document.getElementById("detDisplay").innerHTML=
+    "det(A) = "+det.toFixed(2);
 
     if(Math.abs(det)<0.0001){
-        document.getElementById("relationDisplay").innerHTML =
-        `<span style="color:red">向量线性相关（行列式为0）</span>`;
+        document.getElementById("relationDisplay").innerHTML=
+        "<span style='color:red'>向量线性相关（行列式为0）</span>";
     }else{
-        document.getElementById("relationDisplay").innerHTML =
-        `|det(A)| = 面积 ✔`;
+        document.getElementById("relationDisplay").innerHTML=
+        "|det(A)| = 面积 ✔";
     }
 }
 
@@ -218,7 +196,14 @@ function draw(){
     drawParallelogram();
     drawVector(v1,"blue");
     drawVector(v2,"orange");
-    updateInfo();
+    updatePanel();
+}
+
+function selectVector(name){
+    selected=name;
+    document.getElementById("btn1").classList.remove("selected");
+    document.getElementById("btn2").classList.remove("selected");
+    document.getElementById(name==="v1"?"btn1":"btn2").classList.add("selected");
 }
 
 function resetVectors(){
@@ -227,7 +212,65 @@ function resetVectors(){
     draw();
 }
 
-resizeCanvas();
+canvas.addEventListener("mousedown",startDrag);
+canvas.addEventListener("mousemove",moveDrag);
+canvas.addEventListener("mouseup",()=>dragging=null);
+canvas.addEventListener("mouseleave",()=>dragging=null);
+
+canvas.addEventListener("touchstart",startDrag);
+canvas.addEventListener("touchmove",moveDrag);
+canvas.addEventListener("touchend",()=>dragging=null);
+
+function getPos(e){
+    const rect=canvas.getBoundingClientRect();
+    if(e.touches){
+        return {x:e.touches[0].clientX-rect.left,
+                y:e.touches[0].clientY-rect.top};
+    }
+    return {x:e.clientX-rect.left,
+            y:e.clientY-rect.top};
+}
+
+function startDrag(e){
+    const pos=getPos(e);
+    if(dist(pos,toCanvas(v1))<15) dragging="v1";
+    else if(dist(pos,toCanvas(v2))<15) dragging="v2";
+    else{
+        // 点击空白处设置当前向量
+        const v=fromCanvas(pos);
+        if(selected==="v1"){v1=v;}
+        else{v2=v;}
+        draw();
+    }
+}
+
+function moveDrag(e){
+    if(!dragging) return;
+    e.preventDefault();
+    const pos=getPos(e);
+    const v=fromCanvas(pos);
+    if(dragging==="v1"){v1=v;}
+    else{v2=v;}
+    draw();
+}
+
+function dist(a,b){
+    return Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2);
+}
+
+// 输入框监听
+document.querySelectorAll("input").forEach(input=>{
+    input.addEventListener("change",()=>{
+        v1.x=parseFloat(document.getElementById("v1x").value);
+        v1.y=parseFloat(document.getElementById("v1y").value);
+        v2.x=parseFloat(document.getElementById("v2x").value);
+        v2.y=parseFloat(document.getElementById("v2y").value);
+        draw();
+    });
+});
+
+resize();
+selectVector("v1");
 </script>
 
 </body>
